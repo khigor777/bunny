@@ -1,5 +1,6 @@
 # Bunny
  Fast, in-memory key/value database for Go.
+ TTL - 30 seconds
  
 ### make file 
 ```
