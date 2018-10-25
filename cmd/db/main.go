@@ -14,25 +14,29 @@ import (
 
 const ttl = 30 //ttl in seconds
 
+type Cache interface {
+	Get(key string) []byte
+	Set(key string, value []byte)
+	Delete(key string)
+}
+
 func main() {
 
+	fmt.Println("db starts ...")
 	db := bunny.Open()
 	setCh := make(chan *bunny.Set, 100)
 	getCh := make(chan string, 100)
 	deleteCh := make(chan *bunny.Set, 100)
 
-	//read keys get and set from stdin
 	go readFromStdin(getCh, setCh)
-
-	//ttl delete keys by ttl
 	go deleteKeys(db, deleteCh)
 
-	//handle get and set
 	process(db, setCh, getCh, deleteCh)
 
 }
 
-func process(db *bunny.Cache, setCh chan *bunny.Set, getCh chan string, deleteCh chan *bunny.Set) {
+//handle get and set
+func process(db Cache, setCh chan *bunny.Set, getCh chan string, deleteCh chan *bunny.Set) {
 	for {
 		select {
 		case setVal := <-setCh:
@@ -50,7 +54,8 @@ func process(db *bunny.Cache, setCh chan *bunny.Set, getCh chan string, deleteCh
 	}
 }
 
-func deleteKeys(c *bunny.Cache, deleteCh chan *bunny.Set) {
+//ttl delete keys by ttl
+func deleteKeys(c Cache, deleteCh chan *bunny.Set) {
 	for {
 		select {
 		case val := <-deleteCh:
@@ -67,6 +72,7 @@ func deleteKeys(c *bunny.Cache, deleteCh chan *bunny.Set) {
 	}
 }
 
+//read keys get and set from stdin
 func readFromStdin(getCh chan string, setCh chan *bunny.Set) {
 	reader := bufio.NewReader(os.Stdin)
 	for {
@@ -79,7 +85,6 @@ func readFromStdin(getCh chan string, setCh chan *bunny.Set) {
 			go func(key string) {
 				getCh <- key
 			}(key)
-
 		case "set":
 			go func(key string, value []byte) {
 				ctx, _ := context.WithTimeout(context.Background(), time.Second*ttl)
